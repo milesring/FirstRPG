@@ -1,15 +1,8 @@
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.Rectangle;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
 import javax.swing.JPanel;
@@ -21,12 +14,12 @@ public class Board extends JPanel implements ActionListener {
     private Timer timer;
     private Player player;
     private Enemy enemy;
-    private boolean inBattle = false;
     private final int DELAY = 30;
     private Terrain[][] World;
     private int sizex, sizey;
     private Random r = new Random();
     private LinkedList<RiverNode> river = new LinkedList<>();
+    private boolean inBattle = false;
 
     public Board(int x, int y) {
         sizex = x/10;
@@ -45,29 +38,17 @@ public class Board extends JPanel implements ActionListener {
         player = new Player("Bunsen",1);
         enemy = new Enemy("Pony",1);
 
+        testplayerWeapon();
+
         timer = new Timer(DELAY, this);
         timer.start();
     }
 
-
-    @Override
-    public void paintComponent(Graphics g) {
-        super.paintComponent(g);
-
-
-        drawWorld(g);
-        drawPlayer(g);
-        drawEnemy(g);
-
-
-        Toolkit.getDefaultToolkit().sync();
-    }
-
+    /******World Creation*******/
     private void generateWorld(){
         initTerrain();
         initRiver();
     }
-
     private void initTerrain(){
         for (int y = 0; y < sizey; y++) {
             for (int x = 0; x < sizex; x++) {
@@ -237,7 +218,6 @@ public class Board extends JPanel implements ActionListener {
 
         river.add(head);
     }
-
     private void generateRiver(){
 
         RiverNode temp = null;
@@ -263,7 +243,11 @@ public class Board extends JPanel implements ActionListener {
             river.add(genDir(temp));
         }
     }
-
+    private void setRiver(){
+        for(int i=0;i<river.size();i++){
+            World[river.get(i).getX()][river.get(i).getY()].setType(1);
+        }
+    }
     private RiverNode genDir(RiverNode t){
         int rDir, noDir;
 
@@ -491,10 +475,33 @@ public class Board extends JPanel implements ActionListener {
         t.setDir(1);
         return t;
     }
-    private void setRiver(){
-        for(int i=0;i<river.size();i++){
-            World[river.get(i).getX()][river.get(i).getY()].setType(1);
+
+    private void testplayerWeapon(){
+        player.equipW(new Weapon(1,"Iron Sword",5,10,5,1));
+
+    }
+    @Override
+
+    /******Graphics Drawing******/
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+        if(!inBattle && !player.inInventory){
+            drawWorld(g);
+            drawPlayer(g);
+            drawEnemy(g);
         }
+        else if(inBattle){
+            repaint();
+            drawBattle(g);
+        }
+        else if(player.inInventory){
+            drawInventory(g);
+        }
+
+
+
+        Toolkit.getDefaultToolkit().sync();
     }
     private void drawWorld(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
@@ -506,7 +513,6 @@ public class Board extends JPanel implements ActionListener {
             }
         }
     }
-
     private void drawPlayer(Graphics g){
         Graphics2D g2d = (Graphics2D) g;
         g2d.drawImage(player.getImage(), player.getX(), player.getY(), this);
@@ -520,14 +526,44 @@ public class Board extends JPanel implements ActionListener {
 
         }
     }
+    private void drawBattle(Graphics g){
+        Graphics2D g2d = (Graphics2D) g;
 
+
+
+    }
+    private void drawInventory(Graphics g){
+/******************IN PROGRESS*******************/
+        Graphics2D g2d = (Graphics2D) g;
+
+        g2d.setColor(Color.white);
+        g2d.fillRect(0, 0,sizex*10, sizey*10);
+        g2d.setColor(Color.black);
+
+        String s = "Inventory";
+        Font small = new Font("Helvetica", Font.BOLD, 14);
+        FontMetrics metr = this.getFontMetrics(small);
+
+        g2d.setFont(small);
+        g2d.drawString(s, (sizex*10 - metr.stringWidth(s)) / 2, sizey*10);
+
+
+
+    }
+
+    private void setPlayermovment(boolean m){
+        player.setvalidDown(m);
+        player.setvalidLeft(m);
+        player.setvalidRight(m);
+        player.setvalidUp(m);
+    }
 
 
     @Override
     public void actionPerformed(ActionEvent e) {
 
         player.move();
-        enemy.move(player.getX(), player.getY());
+        enemy.move(player.getX(), player.getY(), sizex*10, sizey*10);
 
         checkCollisions();
 
@@ -544,6 +580,7 @@ public class Board extends JPanel implements ActionListener {
         Rectangle r3 = player.getBounds();
         Rectangle r2 = enemy.getBounds();
         if(r3.intersects(r2) && enemy.isVisible()){
+            inBattle = true;
             battle();
         }
     }
@@ -634,7 +671,6 @@ public class Board extends JPanel implements ActionListener {
     }
 
     private void battle(){
-        inBattle = true;
         double attack;
 
 
@@ -650,11 +686,11 @@ public class Board extends JPanel implements ActionListener {
                 player.incExp((int)(enemy.getLevel()*.5+10));
                 player.incCreaturesKilled();
                 enemy.setVisible(false);
-                inBattle = false;
                 enemy.setX(100);
                 enemy.setY(100);
                 enemy.maxHeal();
                 enemy.setVisible(true);
+                inBattle = false;
                 break;
             }
 
@@ -666,10 +702,10 @@ public class Board extends JPanel implements ActionListener {
                 System.out.printf("\n%s has slain %s\n",enemy.getName(), player.getName());
                 enemy.incExp((int)(player.getLevel()*.5+10));
                 enemy.incCreaturesKilled();
-                inBattle = false;
                 player.setX(50);
                 player.setY(50);
                 player.maxHeal();
+                inBattle = false;
                 break;
             }
 
