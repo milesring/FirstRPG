@@ -1,23 +1,23 @@
 import java.awt.EventQueue;
-import javax.swing.JFrame;
+import javax.swing.*;
 
 public class Arena extends JFrame {
 
-    public Arena() {
+    private Arena() {
 
         initUI();
     }
 
     private void initUI() {
-        int x = 1920;
-        int y = 1080;
+        int x = 640;
+        int y = 480;
         add(new Board(x, y));
 
         setSize(x, y);
         setResizable(false);
         setTitle("Arena");
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
 
     public static void main(String[] args) {

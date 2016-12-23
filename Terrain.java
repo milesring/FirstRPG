@@ -59,4 +59,15 @@ public class Terrain {
     public int getType(){
         return type;
     }
+
+    public void setType(int t){
+        switch(t) {
+            case 0:
+                initLand();
+                break;
+            case 1:
+                initWater();
+                break;
+        }
+    }
 }

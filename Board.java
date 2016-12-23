@@ -10,6 +10,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.Rectangle;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Random;
 import javax.swing.JPanel;
 import javax.swing.Timer;
@@ -24,6 +25,8 @@ public class Board extends JPanel implements ActionListener {
     private final int DELAY = 30;
     private Terrain[][] World;
     private int sizex, sizey;
+    private Random r = new Random();
+    private LinkedList<RiverNode> river = new LinkedList<>();
 
     public Board(int x, int y) {
         sizex = x/10;
@@ -35,7 +38,7 @@ public class Board extends JPanel implements ActionListener {
 
         addKeyListener(new TAdapter());
         setFocusable(true);
-        setBackground(Color.darkGray);
+        setBackground(Color.green);
 
         generateWorld();
 
@@ -61,49 +64,11 @@ public class Board extends JPanel implements ActionListener {
     }
 
     private void generateWorld(){
-        boolean goingXr;
-        boolean goingXl;
-        boolean goingY;
-        Random r = new Random();
+        initTerrain();
+        initRiver();
+    }
 
-        int Dir=r.nextInt(100)+1;
-        System.out.printf("Water dir var: %d\n",Dir);
-        if(Dir<25) {
-            //start water right
-            goingXr = true;
-            goingXl = false;
-            goingY = false;
-        }else if(Dir>=25 && Dir<50) {
-            //start water left
-            goingXl = true;
-            goingXr = false;
-            goingY = false;
-        }else {
-            //start water down
-
-            goingY = true;
-            goingXr = false;
-            goingXl = false;
-        }
-
-
-        if(goingY){
-            System.out.println("Water starting down");
-        }
-        else if(goingXr){
-            System.out.println("Water starting right");
-        }
-        else if(goingXl){
-            System.out.println("Water starting left");
-        }
-
-        System.out.println(sizex);
-
-        //Determine start location of water
-        int wStart = r.nextInt(sizex);
-        World[wStart][0] = new Terrain(wStart,0,1);
-        World[wStart+1][0] = new Terrain(wStart+1,0,1);
-
+    private void initTerrain(){
         for (int y = 0; y < sizey; y++) {
             for (int x = 0; x < sizex; x++) {
 
@@ -111,59 +76,426 @@ public class Board extends JPanel implements ActionListener {
                 if (World[x][y] == null) {
                     World[x][y] = new Terrain(x,y,0);
                 }
-
-                //Continue placing water down
-                if(World[x][y].getType()==1 && goingY && y<sizey-1){
-                    System.out.printf("Placing water down at [%d][%d]\n",x,y+1);
-                    World[x][y+1]=new Terrain(x,y+1,1);
-                }
-                //Continue placing water right
-                else if(World[x][y].getType()==1 && goingXr && x<sizex-1){
-                    System.out.printf("Placing water right at [%d][%d]\n",x+1,y);
-                    World[x+1][y]=new Terrain(x+1,y,1);
-                }
-                //Continue placing water left
-                else if(World[x][y].getType()==1 && goingXl && x>0){
-                    System.out.printf("Placing water left at [%d][%d]\n",x-1,y);
-                    World[x-1][y]=new Terrain(x-1,y,1);
-                }
-
-                Dir=r.nextInt(100)+1;
-                System.out.printf("Water dir var: %d\n",Dir);
-                if(Dir<25 && !goingXl) {
-                    //set water right
-                    goingXr = true;
-                    goingXl = false;
-                    goingY = false;
-                }else if(Dir>=25 && Dir<50 && !goingXr) {
-                    //set water left
-                    goingXl = true;
-                    goingXr = false;
-                    goingY = false;
-                }else {
-                    //set water down
-
-                    goingY = true;
-                    goingXr = false;
-                    goingXl = false;
-                }
-                if(goingY){
-                    System.out.println("Water going down");
-                }
-                else if(goingXr){
-                    System.out.println("Water going right");
-                }
-                else if(goingXl){
-                    System.out.println("Water going left");
-                }
             }
+        }
+    }
+    private void initRiver(){
+        initRiverStart();
+        generateRiver();
+        setRiver();
+    }
+    private void initRiverStart(){
+        int startx, starty, c;
 
-
-
+        //Randomizing the start of the river
+        c=r.nextInt(2);
+        switch(c){
+            case 0:
+                startx=r.nextInt(sizex);
+                if(r.nextInt(2)==0){
+                    starty=0;
+                }
+                else{
+                    starty=sizey-1;
+                }
+                break;
+            default:
+                starty=r.nextInt(sizey);
+                if(r.nextInt(2)==0){
+                    startx=0;
+                }
+                else{
+                    startx=sizey-1;
+                }
+                break;
         }
 
+        RiverNode head = new RiverNode(startx, starty);
+
+        //determining start direction
+        //North = 0
+        //South = 1
+        //East = 2
+        //West = 3
+        //Left side of grid in top corner
+        if (head.getX() == 0 && head.getY() == 0) {
+            c = r.nextInt(2);
+
+            switch (c) {
+                case 0:
+                    head.setDir(1);
+                    break;
+                default:
+                    head.setDir(2);
+                    break;
+            }
+        }
+        //Right side of grid in top corner
+        else if (head.getX() == sizex - 1 && head.getY() == 0) {
+            c = r.nextInt(2);
+
+            switch (c) {
+                case 0:
+                    head.setDir(1);
+                    break;
+                default:
+                    head.setDir(3);
+                    break;
+            }
+        }
+        //Left side of grid in bottom corner
+        else if(head.getX() == 0 && head.getY() == sizey-1){
+            c = r.nextInt(2);
+
+            switch (c) {
+                case 0:
+                    head.setDir(0);
+                    break;
+                default:
+                    head.setDir(2);
+                    break;
+            }
+        }
+        //Right side of grid in bottom corner
+        else if(head.getX() == sizex-1 && head.getY() == sizey-1){
+            c = r.nextInt(2);
+
+            switch (c) {
+                case 0:
+                    head.setDir(0);
+                    break;
+                default:
+                    head.setDir(3);
+                    break;
+            }
+        }
+        //Top of grid (non-corner)
+        else if(head.getY()==0){
+            c = r.nextInt(3);
+
+            switch (c) {
+                case 0:
+                    head.setDir(1);
+                    break;
+                case 1:
+                    head.setDir(2);
+                    break;
+                default:
+                    head.setDir(3);
+                    break;
+            }
+        }
+        //Bottom of grid(non-corner)
+        else if(head.getY()==sizey-1){
+            c = r.nextInt(3);
+
+            switch (c) {
+                case 0:
+                    head.setDir(0);
+                    break;
+                case 1:
+                    head.setDir(2);
+                    break;
+                default:
+                    head.setDir(3);
+                    break;
+            }
+        }
+        //Left side of grid(non-corner)
+        else if(head.getX()==0){
+            c = r.nextInt(3);
+
+            switch (c) {
+                case 0:
+                    head.setDir(0);
+                    break;
+                case 1:
+                    head.setDir(1);
+                    break;
+                default:
+                    head.setDir(2);
+                    break;
+            }
+        }
+        //Right side of grid(non-corner)
+        else if(head.getX()==sizex-1){
+            c = r.nextInt(3);
+
+            switch (c) {
+                case 0:
+                    head.setDir(0);
+                    break;
+                case 1:
+                    head.setDir(1);
+                    break;
+                default:
+                    head.setDir(3);
+                    break;
+            }
+        }
+
+
+        river.add(head);
     }
 
+    private void generateRiver(){
+
+        RiverNode temp = null;
+
+        while(river.getLast().getDir()!=4) {
+            switch (river.getLast().getDir()) {
+                case 0:
+                    temp = new RiverNode(river.getLast().getX(), river.getLast().getY() - 1);
+                    break;
+                case 1:
+                    temp = new RiverNode(river.getLast().getX(), river.getLast().getY() + 1);
+                    break;
+                case 2:
+                    temp = new RiverNode(river.getLast().getX() + 1, river.getLast().getY());
+                    break;
+                case 3:
+                    temp = new RiverNode(river.getLast().getX() - 1, river.getLast().getY());
+                    break;
+                default:
+                    //Will never reach
+            }
+
+            river.add(genDir(temp));
+        }
+    }
+
+    private RiverNode genDir(RiverNode t){
+        int rDir, noDir;
+
+        switch(river.getLast().getDir()){
+            case 0:
+                noDir=1;
+                break;
+            case 1:
+                noDir=0;
+                break;
+            case 2:
+                noDir=3;
+                break;
+            case 3:
+                noDir=2;
+                break;
+            default:
+                //should never get here
+                noDir=4;
+        }
+
+        //Temp placed in top left corner
+        if(t.getX()==0 && t.getY()==0){
+            //Came from [x=0][y=1], river did not start on left side
+            if(t.getX()==river.getLast().getX() && t.getX()!=river.getFirst().getX()){
+                //Can end
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=0][y=1], river did start on left side, don't end on boring river
+            else if(t.getX()==river.getLast().getX() && t.getX()==river.getFirst().getX()){
+                //Continue river east
+                t.setDir(2);
+                return t;
+            }
+            //Came from [x=1][y=0], river did not start on top.
+            else if(t.getY()==river.getLast().getY() && t.getY()!=river.getFirst().getY()){
+                //End river
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=1][y=0], river did start on top.
+            else if(t.getY()==river.getLast().getY() && t.getY()==river.getFirst().getY()) {
+                //Continue river south
+                t.setDir(1);
+                return t;
+            }
+        }
+        //Temp placed in top right corner
+        else if(t.getX()==sizex-1 && t.getY()==0){
+            //Came from [x=sizex-1][y=1], river did not start on right side
+            if(t.getX()==river.getLast().getX() && t.getX()!=river.getFirst().getX()){
+                //Can end
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=sizex-1][y=1], river did start on right side, don't end on boring river
+            else if(t.getX()==river.getLast().getX() && t.getX()==river.getFirst().getX()){
+                //Continue river west
+                t.setDir(3);
+                return t;
+            }
+            //Came from [x=sizex-2][y=0], river did not start on top.
+            else if(t.getY()==river.getLast().getY() && t.getY()!=river.getFirst().getY()){
+                //End river
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=sizex-2][y=0], river did start on top.
+            else if(t.getY()==river.getLast().getY() && t.getY()==river.getFirst().getY()) {
+                //Continue river south
+                t.setDir(1);
+                return t;
+            }
+
+        }
+        //Temp placed in bottom left corner
+        else if(t.getX()==0 && t.getY()==sizey-1){
+            //Came from [x=0][y=sizey-2], river did not start on left side
+            if(t.getX()==river.getLast().getX() && t.getX()!=river.getFirst().getX()){
+                //Can end
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=0][y=sizey-2], river did start on left side, don't end on boring river
+            else if(t.getX()==river.getLast().getX() && t.getX()==river.getFirst().getX()){
+                //Continue river east
+                t.setDir(2);
+                return t;
+            }
+            //Came from [x=1][y=sizey-1], river did not start on bottom.
+            else if(t.getY()==river.getLast().getY() && t.getY()!=river.getFirst().getY()){
+                //End river
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=1][y=sizey-1], river did start on bottom.
+            else if(t.getY()==river.getLast().getY() && t.getY()==river.getFirst().getY()) {
+                //Continue river north
+                t.setDir(0);
+                return t;
+            }
+
+        }
+        //Temp placed in bottom right corner
+        else if(t.getX()==sizex-1 && t.getY()==sizey-1){
+            //Came from [x=sizex-1][y=sizey-2], river did not start on right side
+            if(t.getX()==river.getLast().getX() && t.getX()!=river.getFirst().getX()){
+                //Can end
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=size-1][y=sizey-2], river did start on right side, don't end on boring river
+            else if(t.getX()==river.getLast().getX() && t.getX()==river.getFirst().getX()){
+                //Continue river west
+                t.setDir(3);
+                return t;
+            }
+            //Came from [x=sizex-2][y=sizey-1], river did not start on bottom.
+            else if(t.getY()==river.getLast().getY() && t.getY()!=river.getFirst().getY()){
+                //End river
+                t.setDir(4);
+                return t;
+            }
+            //Came from [x=sizex-2][y=sizey-1], river did start on bottom.
+            else if(t.getY()==river.getLast().getY() && t.getY()==river.getFirst().getY()) {
+                //Continue river north
+                t.setDir(0);
+                return t;
+            }
+
+        }
+        //Temp placed on top row in non-corner
+        else if(t.getY()==0){
+            //Started in top row, don't end
+            if(river.getFirst().getY()==0){
+                //Bound is 1..3 since 0 is north and we are at top
+                rDir = r.nextInt(3)+1;
+                //Makes sure that river doesn't go in reverse ie. east->west->east
+                while(rDir==noDir){
+                    rDir = r.nextInt(3)+1;
+                }
+                t.setDir(rDir);
+                return t;
+
+            }
+            //Didn't start in top row, end
+            else{
+                t.setDir(4);
+                return t;
+            }
+        }
+        //Temp placed on bottom row in non-corner
+        else if(t.getY()==sizey-1){
+            //Started in bottom row, don't end
+            if(river.getFirst().getY()==sizey-1){
+                //Bound is 0..4
+                rDir = r.nextInt(4);
+                //Makes sure that river doesn't go in reverse ie. east->west->east
+                //or if the river attempts to go south
+                while(rDir==noDir || rDir==1){
+                    rDir = r.nextInt(4);
+                }
+                t.setDir(rDir);
+                return t;
+
+            }
+            //Didn't start in top row, end
+            else{
+                t.setDir(4);
+                return t;
+            }
+        }
+        //Temp placed on left side in non-corner
+        else if(t.getX()==0){
+            //Started in left side, don't end
+            if(river.getFirst().getX()==0){
+                //Bound is 0..4
+                rDir = r.nextInt(4);
+                //Makes sure that river doesn't go in reverse ie. east->west->east
+                //or if the river attempts to go west
+                while(rDir==noDir || rDir==3){
+                    rDir = r.nextInt(4);
+                }
+                t.setDir(rDir);
+                return t;
+
+            }
+            //Didn't start in left side, end
+            else{
+                t.setDir(4);
+                return t;
+            }
+        }
+        //Temp placed on right side in non-corner
+        else if(t.getX()==sizex-1){
+            //Started in right side, don't end
+            if(river.getFirst().getX()==sizex-1){
+                //Bound is 0..4
+                rDir = r.nextInt(4);
+                //Makes sure that river doesn't go in reverse ie. east->west->east
+                //or if the river attempts to go east
+                while(rDir==noDir || rDir==2){
+                    rDir = r.nextInt(4);
+                }
+                t.setDir(rDir);
+                return t;
+
+            }
+            //Didn't start in right side, end
+            else{
+                t.setDir(4);
+                return t;
+            }
+        }
+        //Temp placed inside grid (non-edge, non-corner)
+        else{
+            rDir=r.nextInt(4);
+            while(rDir==noDir){
+                rDir=r.nextInt(4);
+            }
+            t.setDir(rDir);
+            return t;
+        }
+        t.setDir(1);
+        return t;
+    }
+    private void setRiver(){
+        for(int i=0;i<river.size();i++){
+            World[river.get(i).getX()][river.get(i).getY()].setType(1);
+        }
+    }
     private void drawWorld(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
 
